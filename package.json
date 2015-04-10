@@ -1,0 +1,45 @@
+
+{
+  "name": "linecamera",
+  "description": "linecamera module",
+  "homepage": "https://github.com/tualo/linecamera",
+  "main": "lib/main.js",
+  "bin": {
+    "sorter": "./bin/linecamera"
+  },
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=0.12.0"
+  },
+  "keywords": [
+    "sorter"
+  ],
+  "author": [
+    {
+      "name": "Thomas Hoffmann",
+      "email": "thomas.hoffmann@tualo.de",
+      "url": "http://tualo.de/"
+    }
+  ],
+  "maintainers": [
+    {
+      "name": "Thomas Hoffmann",
+      "email": "thomas.hoffmann@tualo.de",
+      "url": "http://tualo.de/"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tualo/linecamera.git"
+  },
+  "readmeFilename": "README.md",
+  "dependencies": {
+    "require-all": "*",
+    "socket.io": "*",
+    "socket.io-client": "*",
+    "commander": "*",
+    "colors": "*",
+    "osenv": "*"
+  }
+
+}
