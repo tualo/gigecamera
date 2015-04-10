@@ -5,6 +5,9 @@ var GVCP = require("../lib/classes/GVCP").GVCP;
 
 var gvcp = new GVCP();
 
+gvcp.on('DISCOVERY_ACK',function(msg){
+  console.log(msg);
+});
 gvcp.on('listening',function(){
   var cmd = new DISCOVERY_CMD();
   gvcp.send(cmd);
