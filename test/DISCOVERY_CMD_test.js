@@ -2,34 +2,16 @@
 var DISCOVERY_CMD = require("../lib/classes/commands/DISCOVERY_CMD").DISCOVERY_CMD;
 var GVCP = require("../lib/classes/GVCP").GVCP;
 
-var cmd = new DISCOVERY_CMD();
-var GVCP = new GVCP();
 
-var broadcastAddress = "255.255.255.255";
-var message = cmd.toBuffer();
+var gvcp = new GVCP();
 
-var dgram = require('dgram');
-var client = dgram.createSocket("udp4");
-client.bind();
-client.on('message', function (message, remote) {
-
-    console.log("The packet came back");
-    console.log( GVCP.determineMessagePacket(message) );
-//    console.log(message,remote);
-
+gvcp.on('listening',function(){
+  var cmd = new DISCOVERY_CMD();
+  gvcp.send(cmd);
 });
-client.on("listening", function () {
-    client.setBroadcast(true);
-    client.send(message, 0, message.length, 3956, broadcastAddress, function(err, bytes) {
-      if (err){
-        console.log(err);
-      }else{
-        console.log(bytes+'bytes was send.');
-      }
+gvcp.client();
 
 
-    });
-});
 
 /*
 console.log(parseInt('00000001', 2))
