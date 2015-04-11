@@ -1,5 +1,5 @@
 
-var DISCOVERY_CMD = require("../lib/classes/commands/DISCOVERY_CMD").DISCOVERY_CMD;
+var DISCOVERY = require("../lib/classes/commands/DISCOVERY").DISCOVERY;
 var GVCP = require("../lib/classes/GVCP").GVCP;
 
 
@@ -8,12 +8,10 @@ var gvcp = new GVCP();
 gvcp.on('DISCOVERY_ACK',function(msg){
   console.log(msg);
 });
-gvcp.on('listening',function(){
-  var cmd = new DISCOVERY_CMD();
-  gvcp.send(cmd);
-});
-gvcp.client();
 
+
+gvcp.client();
+gvcp.send(new DISCOVERY());
 
 
 /*
