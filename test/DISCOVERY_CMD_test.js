@@ -1,4 +1,6 @@
 
+var READREG = require("../lib/classes/commands/READREG").READREG;
+var READMEM = require("../lib/classes/commands/READMEM").READMEM;
 var DISCOVERY = require("../lib/classes/commands/DISCOVERY").DISCOVERY;
 var GVCP = require("../lib/classes/GVCP").GVCP;
 
@@ -7,11 +9,23 @@ var gvcp = new GVCP();
 
 gvcp.on('DISCOVERY_ACK',function(msg){
   console.log(msg);
+  var readReg = new READREG();
+  readReg.addRegister('GVCP Capability');
+  gvcp.send(msg.current_ip,readReg,function(err,regmsg){
+
+    console.log('*',regmsg);
+    var readMem = new READMEM();
+    readMem.read(0x0200,512);
+    gvcp.send(msg.current_ip,readMem,function(err,memmsg){
+      console.log('*',memmsg.data.readString());
+    });
+
+  });
 });
 
 
 gvcp.client();
-gvcp.send(new DISCOVERY());
+gvcp.send('255.255.255.255',new DISCOVERY());
 
 
 /*
