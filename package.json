@@ -1,18 +1,18 @@
 
 {
-  "name": "linecamera",
-  "description": "linecamera module",
-  "homepage": "https://github.com/tualo/linecamera",
+  "name": "gigecamera",
+  "description": "gigecamera module",
+  "homepage": "https://github.com/tualo/gigecamera",
   "main": "lib/main.js",
   "bin": {
-    "sorter": "./bin/linecamera"
+    "gigecamera": "./bin/linecamera"
   },
   "version": "0.0.1",
   "engines": {
     "node": ">=0.12.0"
   },
   "keywords": [
-    "sorter"
+    "gige"
   ],
   "author": [
     {
@@ -30,16 +30,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/tualo/linecamera.git"
+    "url": "https://github.com/tualo/gigecamera.git"
   },
   "readmeFilename": "README.md",
   "dependencies": {
-    "require-all": "*",
-    "socket.io": "*",
-    "socket.io-client": "*",
-    "commander": "*",
-    "colors": "*",
-    "osenv": "*"
+    "commander": "2.8.0",
+    "colors": "*"
   }
 
 }
