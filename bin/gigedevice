@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+
+var fs = require('fs'),
+    program = require('commander'),
+    pjson = require('../package.json'),
+    path =  require('path'),
+    Compiler = require('../lib/classes/genapi/Compiler').Compiler;
+
+
+program
+    .version(pjson.version)
+    .description('gigedevice')
+    .usage('[options] <file ...>')
+    .parse(process.argv);
+if (program.args.length !== 1){
+  program.help();
+}else{
+  /*
+  var xml = fs.readFileSync(program.args[0]);
+  var compiler = new Compiler();
+  compiler.compile(xml);
+  console.log(compiler.getCode());
+  */
+}
+//console.log(program);
