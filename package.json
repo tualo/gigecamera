@@ -5,7 +5,7 @@
   "homepage": "https://github.com/tualo/gigecamera",
   "main": "lib/main.js",
   "bin": {
-    "gigecamera": "./bin/linecamera"
+    "gigecamera": "./bin/gigedevice"
   },
   "version": "0.0.1",
   "engines": {
@@ -35,7 +35,9 @@
   "readmeFilename": "README.md",
   "dependencies": {
     "commander": "2.8.0",
-    "colors": "*"
+    "colors": "*",
+    "adm-zip": "0.4.7",
+    "require-all": "*"
   }
 
 }

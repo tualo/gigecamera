@@ -1,6 +1,15 @@
 var Device = require("../lib/classes/Device").Device;
 
 var device = new Device();
-device.setDevice('192.168.178.47');
+device.gvcp.on('dicovered',function(msg){
+  device.setDevice(msg.current_ip);
+})
 
-//device.getDeviceXML();
+device.on('initialized',function(cam){
+
+  console.log('done',cam.DeviceModelName.getValue());
+
+})
+device.gvcp.discover();
+
+setTimeout(function(){process.exit()},15000);
