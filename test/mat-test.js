@@ -1,4 +1,4 @@
-/*
+
 
 //CV_8UC1
 var opencv = require('opencv');
@@ -8,4 +8,3 @@ var buf = Buffer(256*2048);
 buf.fill(200);
 mat.put(buf);
 mat.save('./mat.jpg');
-*/
