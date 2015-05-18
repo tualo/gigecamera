@@ -1,25 +1,91 @@
 #!/usr/bin/env node
 
 var fs = require('fs'),
+    os = require('os'),
     program = require('commander'),
     pjson = require('../package.json'),
-    path =  require('path'),
-    Compiler = require('../lib/classes/genapi/Compiler').Compiler;
+    path =  require('path');
 
+var GVCP = require("../lib/classes/GVCP").GVCP;
+var imageing = require("../lib/imageing").imageing;
+    //,
+    //Compiler = require('../lib/classes/genapi/Compiler').Compiler;
+function exdendedHelp(){
+  console.log('setting mtu: sudo ifconfig eth1 mtu 3000');
+}
 
 program
     .version(pjson.version)
     .description('gigedevice')
-    .usage('[options] <file ...>')
+    .usage('[options]')
+    .option('-d, --discover','find devices')
+    .option('-p, --prefix [prefix]','file and path prefix (defaul: ./mat)')
+    .option('-m, --mtu [mtu]','mtu')
+    .option('-b, --broadcast [broadcast]','netmask')
+    .option('-e, --exposure [exposure]','exposure')
+    .option('-i, --imageing','read images from camera')
+    .on('--help',exdendedHelp)
     .parse(process.argv);
-if (program.args.length !== 1){
-  program.help();
+
+
+if(program.imageing){
+//sudo ifconfig eth1 mtu 3000
+  var broadcast = program.broadcast || '127.0.0.255';
+  var mtu = program.mtu || 3000;
+  var prefix = program.prefix || './m';
+  var exposure = program.exposure || 1000;
+
+  //console.log(mtu,prefix,broadcast,exposure);
+  imageing(mtu,prefix,broadcast,exposure)
+}else if(program.discover){
+  var iFaces = os.networkInterfaces();
+  var nameList = [];
+
+
+  function checkList(list,index){
+    if(index<list.length){
+      var name = nameList[index];
+      console.log('checking '+name);
+      checkIFaces(name,iFaces[name],function(devices){
+        console.log(devices);
+        checkList(list,index+1);
+      });
+    }else{
+      process.exit();
+    }
+  }
+
+  function checkIFaces(name,list,cb){
+    var ip4 = null;
+    for(var i=0;i<list.length;i++){
+      if (list[i].family==='IPv4'){
+        ip4=list[i];
+      }
+    }
+
+    if (ip4!==null){
+      var gvcp = new GVCP();
+      var baddr = ip4.address.split('.');
+      var devices = [];
+      baddr[3] = 255;
+      gvcp.broadcastAddress = baddr.join('.');
+      gvcp.on('dicovered',function(msg){
+        devices.push(msg);
+      });
+      gvcp.discover();
+      setTimeout(function(){
+        cb(devices);
+      },3000);
+    }
+  }
+
+  for(var name in iFaces){
+    nameList.push(name);
+  }
+
+  checkList(nameList,0);
+
 }else{
-  /*
-  var xml = fs.readFileSync(program.args[0]);
-  var compiler = new Compiler();
-  compiler.compile(xml);
-  console.log(compiler.getCode());
-  */
+  program.help()
 }
 //console.log(program);
