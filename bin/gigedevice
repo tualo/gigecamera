@@ -24,6 +24,7 @@ program
     .option('-b, --broadcast [broadcast]','netmask')
     .option('-e, --exposure [exposure]','exposure')
     .option('-i, --imageing','read images from camera')
+    .option('-f, --interface [interface]','interface name (defaults to all)')
     .on('--help',exdendedHelp)
     .parse(process.argv);
 
@@ -45,17 +46,29 @@ if(program.imageing){
   function checkList(list,index){
     if(index<list.length){
       var name = nameList[index];
-      console.log('checking '+name);
-      checkIFaces(name,iFaces[name],function(devices){
-        console.log(devices);
-        checkList(list,index+1);
-      });
+
+      if (program.interface){
+        if (program.interface===name){
+          checkIFaces(name,iFaces[name],function(devices){
+            console.log(devices);
+            checkList(list,index+1);
+          });
+        }else{
+          checkList(list,index+1);
+        }
+      }else{
+        checkIFaces(name,iFaces[name],function(devices){
+          console.log(devices);
+          checkList(list,index+1);
+        });
+      }
     }else{
       process.exit();
     }
   }
 
   function checkIFaces(name,list,cb){
+    console.log('checking '+name);
     var ip4 = null;
     for(var i=0;i<list.length;i++){
       if (list[i].family==='IPv4'){
