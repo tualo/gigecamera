@@ -9,3 +9,10 @@ test.js
 docs
 mat*.jpg
 lib/temp.js
+cpp/cmake/CMakeFiles
+a/cpp/cmake/cmake_install.cmake
+a/cpp/cmake/CMakeCache.txt
+cpp/cmake/CMakeCache.txt
+cpp/cmake/cmake_install.cmake
+cpp/cmake/Makefile
+cpp/cmake/gige
