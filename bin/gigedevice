@@ -36,7 +36,6 @@ if(program.imageing){
   var prefix = program.prefix || './m';
   var exposure = program.exposure || 1000;
 
-  //console.log(mtu,prefix,broadcast,exposure);
   imageing(mtu,prefix,broadcast,exposure)
 }else if(program.discover){
   var iFaces = os.networkInterfaces();
