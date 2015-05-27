@@ -156,6 +156,7 @@ int main(int argc, char** argv )
          printf("something went wrong while threading %i num %i\n",ct,threadIndex);
          return 0;
        }
+       pthread_detach(thread);
        threadIndex++;
 
 
