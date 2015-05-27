@@ -23,6 +23,7 @@ program
     .option('-m, --mtu [mtu]','mtu')
     .option('-b, --broadcast [broadcast]','netmask')
     .option('-e, --exposure [exposure]','exposure')
+    .option('-h, --height [height]','height')
     .option('-i, --imageing','read images from camera')
     .option('-f, --interface [interface]','interface name (defaults to all)')
     .on('--help',exdendedHelp)
@@ -35,8 +36,9 @@ if(program.imageing){
   var mtu = program.mtu || 3000;
   var prefix = program.prefix || './m';
   var exposure = program.exposure || 1000;
+  var height = program.height || 128;
 
-  imageing(mtu,prefix,broadcast,exposure)
+  imageing(mtu,prefix,broadcast,exposure,height)
 }else if(program.discover){
   var iFaces = os.networkInterfaces();
   var nameList = [];
