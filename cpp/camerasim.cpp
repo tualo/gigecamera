@@ -166,7 +166,7 @@ int main(int argc, char** argv )
       sendto(sockfd,payload,uselen+8,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
       printf(" %05d - PAYLOAD - %05d -------------------------------------%05d \n",block_id,packet_id,uselen+8);
       position += len;
-      usleep(1);
+      usleep(100);
     }
 
 
@@ -193,7 +193,7 @@ int main(int argc, char** argv )
     sendto(sockfd,trailer,sizeof(trailer),0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
     printf(" %05d - TRAILER ---------------------------------------------%05lu \n",block_id,sizeof(trailer));
 
-    usleep(10000000);
+    usleep(1000000);
 
 
     if (block_id < 65535){

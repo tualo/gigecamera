@@ -9,8 +9,10 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
+#include <cstdarg>
 
-#define IMAGE_THREADS 5
+#define IMAGE_THREADS 15
 #define PACKET_THREADS 500
 #define IMAGE_WIDTH 2048
 #define IMAGE_HEIGHT 4096
@@ -51,12 +53,33 @@ int packet_threads_index = 0;
 
 
 
+//missing string printf
+//this is safe and convenient but not exactly efficient
+inline std::string format(const char* fmt, ...){
+    int size = 512;
+    char* buffer = 0;
+    buffer = new char[size];
+    va_list vl;
+    va_start(vl, fmt);
+    int nsize = vsnprintf(buffer, size, fmt, vl);
+    if(size<=nsize){ //fail delete buffer and try again
+        delete[] buffer;
+        buffer = 0;
+        buffer = new char[nsize+1]; //+1 for /0
+        nsize = vsnprintf(buffer, size, fmt, vl);
+    }
+    std::string ret(buffer);
+    va_end(vl);
+    delete[] buffer;
+    return ret;
+}
 
 
 
 void* writePacket( void *data );
 void* writeImage( void *data );
 
+std::string prefix = "~/imagedata/";
 
 int main(int argc, char** argv )
 {
@@ -64,13 +87,13 @@ int main(int argc, char** argv )
 
   int loop = 0;
 
-  if ( argc != 2 )
-  {
-    printf("usage: gige <ip4-address>\n");
+  if ( argc < 2 && argc > 3 ){
+    printf("usage: gige <ip4-address> [prefix]\n");
     return -1;
   }
-
-  printf(" ip %s\n",argv[1]);
+  if ( argc >= 3 ){
+    prefix = std::string(argv[2]);
+  }
 
 
 
@@ -104,8 +127,7 @@ int main(int argc, char** argv )
   int offset=0;
   int packet_length=0;
 
-  for (;;)
-  {
+  for (;;) {
      len = sizeof(cliaddr);
      n = recvfrom(sockfd,mesg,MAX_PACKET_LENGTH,0,(struct sockaddr *)&cliaddr,&len);
      status = ((unsigned char)mesg[0] << 8) | ((unsigned char)mesg[1]);
@@ -118,7 +140,7 @@ int main(int argc, char** argv )
      }
      if (packet_format == 3){
        // data payload
-       printf("payload length %05d maxlength %05d packet_id %05d\n ",n-8,packet_length,packet_id);
+       printf("idx %d block %05d payload length %05d maxlength %05d packet_id %05d\n ",packet_threads_index,block_id,n-8,packet_length,packet_id);
 
        if ( (packet_id!=1)&&(packet_id!=last_packet_id+1)){
          printf("missing packet %d until %d",last_packet_id,packet_id-1);
@@ -128,7 +150,7 @@ int main(int argc, char** argv )
 
        struct packet_info *packet_info = &packet_threads[packet_threads_index];
        packet_threads_index++;
-       if (packet_threads_index>PACKET_THREADS){
+       if (packet_threads_index+1>PACKET_THREADS){
          packet_threads_index=0;
        }
        packet_info->packet_id = packet_id;
@@ -147,8 +169,8 @@ int main(int argc, char** argv )
          printf("something went wrong while threading %i\n",ct);
          return 0;
        }
-       pthread_detach(thread);
-
+       pthread_join(thread,NULL);
+       printf("idx %d",packet_threads_index);
 
      }
 
@@ -157,9 +179,10 @@ int main(int argc, char** argv )
 
 
        struct image_info *image_info = &image_threads[image_threads_index];
+       printf("idx %d trailer block %05d \n ",image_threads_index,block_id);
 
        image_threads_index++;
-       if (image_threads_index>IMAGE_THREADS){
+       if (image_threads_index+1>IMAGE_THREADS){
          image_threads_index=0;
        }
 
@@ -179,7 +202,6 @@ int main(int argc, char** argv )
        }
        pthread_detach(saveThread);
 
-       printf("trailer block %05d \n ",block_id);
      }
      if (packet_format == 1){
        offset = 8;
@@ -210,7 +232,7 @@ void* writePacket( void *data )
 {
   struct packet_info *tib;
   tib = (struct packet_info *)data;
-  printf(" adr %d %d ",(tib->packet_id-1)*tib->max_packet_length,tib->image_info_adr->data[(tib->packet_id-1)*tib->max_packet_length]);
+  //printf(" adr %d %d ",(tib->packet_id-1)*tib->max_packet_length,tib->image_info_adr->data[(tib->packet_id-1)*tib->max_packet_length]);
   memcpy(&tib->image_info_adr->data[(tib->packet_id-1)*tib->max_packet_length],&tib->data,tib->packet_length);
   /*
   struct thread_info *tib;
@@ -224,7 +246,7 @@ void* writePacket( void *data )
   imwrite(filename, img);
   printf("saved %i \n",tib->block_id);//,tid);
   */
-  pthread_exit(NULL);
+  pthread_exit((void*)42);
 	return 0;
 
 }
@@ -240,6 +262,13 @@ void* writeImage( void *data )
   Mat img(tib->image_height, tib->image_width, CV_8UC1);
   memcpy(img.data,&tib->data,tib->image_height * tib->image_width);
   imshow("display",img);
+
+
+  char filename[128];
+  std::string format = prefix+std::string("%05d.%05d.jpg");
+  sprintf(filename, format.c_str() , tib->loop, tib->block_id);
+  printf(" saving %s\n",filename);
+  imwrite(filename, img);
   /*
   struct thread_block_info *tib;
   tib = (struct thread_block_info *)data;
@@ -247,6 +276,6 @@ void* writeImage( void *data )
   int offset = (tib->offset-1) * tib->payload_size;
   memcpy( tib->adr->message ,&tib->message,tib->bytes);
   */
-  pthread_exit(NULL);
+  pthread_exit((void*)42);
   return NULL;
 }
