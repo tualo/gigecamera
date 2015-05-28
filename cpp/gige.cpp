@@ -5,25 +5,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <opencv2/opencv.hpp>
+//#include <opencv2/opencv.hpp>
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
 
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <cstdarg>
+#include <unistd.h>
 
-#define IMAGE_THREADS 15
+
+#define IMAGE_THREADS 500
 #define PACKET_THREADS 500
 #define IMAGE_WIDTH 2048
-#define IMAGE_HEIGHT 4096
+#define STARTSTOP_THREADS 3
+#define IMAGE_HEIGHT 512
 #define MAX_PACKET_LENGTH 3000
 #define MAX_IMAGE_LENGTH IMAGE_WIDTH*IMAGE_HEIGHT
+#define BIG_IMAGE_HEIGHT 2048*5
 
 using namespace cv;
+
+struct start_stop {
+  int start;
+  int stop;
+};
+struct start_stop start_stop_threads[STARTSTOP_THREADS];
+int start_stop_threads_index = 0;
 
 
 struct image_info {
   int block_id;
+  int image_threads_index;
   int packet_id;
   int packet_length;
   int max_packet_length;
@@ -32,9 +46,17 @@ struct image_info {
   int loop;
   unsigned char data[MAX_IMAGE_LENGTH];
 };
+
 struct image_info image_threads[IMAGE_THREADS];
 int image_threads_index = 0;
 
+
+int main_avg = -1;
+
+int startImageAt = 0;
+int stopImageAt = 0;
+
+bool inImage=false;
 
 struct packet_info {
   int block_id;
@@ -52,6 +74,10 @@ struct packet_info packet_threads[PACKET_THREADS];
 int packet_threads_index = 0;
 
 
+unsigned char *bigimage = new unsigned char[IMAGE_WIDTH*BIG_IMAGE_HEIGHT];
+int bigimage_offset = 0;
+int bigimage_height = 0;
+int bigimage_counter = 0;
 
 //missing string printf
 //this is safe and convenient but not exactly efficient
@@ -78,12 +104,15 @@ inline std::string format(const char* fmt, ...){
 
 void* writePacket( void *data );
 void* writeImage( void *data );
+void* neu( void* data );
+
 
 std::string prefix = "~/imagedata/";
 
 int main(int argc, char** argv )
 {
-  namedWindow("display",WINDOW_AUTOSIZE);
+  namedWindow("LIVE",CV_WINDOW_NORMAL);
+  waitKey(1);
 
   int loop = 0;
 
@@ -108,10 +137,11 @@ int main(int argc, char** argv )
   bzero(&servaddr,sizeof(servaddr));
   servaddr.sin_family = AF_INET;
 
+
   inet_pton(AF_INET, argv[1], &(servaddr.sin_addr));
   servaddr.sin_port=htons(32000);
   bind(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));
-  printf("bind to %s:%i",argv[1],32000);
+  printf("bind to %i\n",32000);
 
   int status = 0; // 0 is ok
   int block_id = 0; //1- 65535;
@@ -140,10 +170,10 @@ int main(int argc, char** argv )
      }
      if (packet_format == 3){
        // data payload
-       printf("idx %d block %05d payload length %05d maxlength %05d packet_id %05d\n ",packet_threads_index,block_id,n-8,packet_length,packet_id);
+       //printf("idx %d block %05d payload length %05d maxlength %05d packet_id %05d\n ",packet_threads_index,block_id,n-8,packet_length,packet_id);
 
        if ( (packet_id!=1)&&(packet_id!=last_packet_id+1)){
-         printf("missing packet %d until %d",last_packet_id,packet_id-1);
+         printf("missing packet %d until %d\n",last_packet_id,packet_id-1);
        }
        last_packet_id = packet_id;
 
@@ -170,7 +200,7 @@ int main(int argc, char** argv )
          return 0;
        }
        pthread_join(thread,NULL);
-       printf("idx %d",packet_threads_index);
+       //printf("packet %d image %d",packet_threads_index, image_threads_index);
 
      }
 
@@ -179,14 +209,11 @@ int main(int argc, char** argv )
 
 
        struct image_info *image_info = &image_threads[image_threads_index];
-       printf("idx %d trailer block %05d \n ",image_threads_index,block_id);
+       //printf("idx %d trailer block %05d \n ",image_threads_index,block_id);
 
-       image_threads_index++;
-       if (image_threads_index+1>IMAGE_THREADS){
-         image_threads_index=0;
-       }
 
        pthread_t saveThread;
+       image_info->image_threads_index = image_threads_index;
        image_info->packet_id = packet_id;
        image_info->max_packet_length = packet_length;
        image_info->packet_length = n - 8;
@@ -194,6 +221,11 @@ int main(int argc, char** argv )
        image_info->image_height = image_height;
        image_info->image_width = image_width;
        image_info->loop = loop;
+
+       image_threads_index++;
+       if (image_threads_index+1>IMAGE_THREADS){
+         image_threads_index=0;
+       }
 
        int rc = pthread_create( &saveThread, NULL, writeImage, (void*)image_info);
        if( rc  != 0) {
@@ -212,7 +244,7 @@ int main(int argc, char** argv )
        pixel_format = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
        image_width = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
        image_height = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
-       printf("leader block_id %05d width %05d height %05d\n ",block_id,image_width,image_height);
+       //printf("leader block_id %05d width %05d height %05d\n ",block_id,image_width,image_height);
        if (MAX_IMAGE_LENGTH<image_height*image_width){
          printf("image too large\n");
          exit(-1);
@@ -232,20 +264,7 @@ void* writePacket( void *data )
 {
   struct packet_info *tib;
   tib = (struct packet_info *)data;
-  //printf(" adr %d %d ",(tib->packet_id-1)*tib->max_packet_length,tib->image_info_adr->data[(tib->packet_id-1)*tib->max_packet_length]);
   memcpy(&tib->image_info_adr->data[(tib->packet_id-1)*tib->max_packet_length],&tib->data,tib->packet_length);
-  /*
-  struct thread_info *tib;
-  tib = (struct thread_info *)data;
-//  long tid;
-//  tid = (long)block;
-  char filename[64];
-  sprintf(filename, "/imagedata/f.%05d.%05d.jpg", tib->loop, tib->block_id);
-  Mat img(tib->image_height, tib->image_width, CV_8UC1);
-  memcpy(img.data,&tib->message,tib->image_height * tib->image_width);
-  imwrite(filename, img);
-  printf("saved %i \n",tib->block_id);//,tid);
-  */
   pthread_exit((void*)42);
 	return 0;
 
@@ -259,23 +278,214 @@ void* writeImage( void *data )
   struct image_info *tib;
   tib = (struct image_info *)data;
 
+  int m = tib->image_height * tib->image_width;
+  int i = 0;
+  int avg = 0;
+  int returnValue = 0;
+
+  long sum = 0;
+  for(i=0;i<m;i++){
+    sum+=tib->data[i];
+  }
+  avg = floor(sum/m);
+
+
+
+
+  if (main_avg==-1){
+    main_avg=avg;
+    printf("setting avg to %d\n",avg);
+  }else{
+    //printf("current avg is %d\n",avg);
+    if (avg <= main_avg+10){
+      if (inImage){
+        inImage = false;
+
+        if (bigimage_offset + (tib->image_height * tib->image_width) < BIG_IMAGE_HEIGHT * IMAGE_WIDTH ){
+          memcpy(bigimage + bigimage_offset,&tib->data,tib->image_height * tib->image_width);
+          bigimage_offset += tib->image_height * tib->image_width;
+          bigimage_height += tib->image_height;
+        }
+        stopImageAt = tib->image_threads_index;
+        returnValue = 0;
+
+        Mat img(bigimage_height, IMAGE_WIDTH, CV_8UC1);
+        memcpy(img.data,bigimage,bigimage_height * IMAGE_WIDTH);
+
+
+        Mat dst;               // dst must be a different Mat
+        flip(img, dst, 1);
+
+        imshow("LIVE",dst);
+        waitKey(1);
+
+        char filename[128];
+        std::string format = prefix+std::string("%08d.tiff");
+        sprintf(filename, format.c_str() , bigimage_counter++);
+        printf(filename);
+        printf(" written");
+        imwrite(filename, dst);
+
+
+        //memcpy(img.data,data,newHeight);
+        //img.data = data;
+        //imshow("LIVE",img);
+        //waitKey(1);
+
+
+        /*
+
+        start_stop *info = &start_stop_threads[start_stop_threads_index];
+        info->start = (int)startImageAt;
+        info->stop =(int)stopImageAt;
+        printf("image %d - %d\n",info->start,info->stop);
+
+        pthread_t saveThread;
+        int rc = pthread_create( &saveThread, NULL, neu, (void*)&info);
+        if( rc  != 0) {
+          printf("something went wrong while threading %i\n",rc);
+          return 0;
+        }
+        pthread_detach(saveThread);
+        if (start_stop_threads_index==STARTSTOP_THREADS){
+          start_stop_threads_index=0;
+        }else{
+          start_stop_threads_index++;
+        }
+        printf("after\n");
+        */
+      }
+    }else{
+      if (!inImage){
+        inImage = true;
+        bigimage_offset = 0;
+        bigimage_height = 0;
+        startImageAt = tib->image_threads_index;
+
+
+        printf("start image %d offset %d\n",tib->image_threads_index,bigimage_offset);
+
+      }
+
+
+    }
+
+    if (inImage){
+
+
+      if (bigimage_offset + (tib->image_height * tib->image_width) < BIG_IMAGE_HEIGHT * IMAGE_WIDTH ){
+        memcpy(bigimage + bigimage_offset,&tib->data,tib->image_height * tib->image_width);
+          bigimage_offset += tib->image_height * tib->image_width;
+        bigimage_height += tib->image_height;
+      }
+
+    }
+  }
+
+
+
+  pthread_exit((void*)42);
+
+  /*
   Mat img(tib->image_height, tib->image_width, CV_8UC1);
   memcpy(img.data,&tib->data,tib->image_height * tib->image_width);
-  imshow("display",img);
+  Scalar scalar = mean(img);
+  */
 
+  /*
+  Mat img(tib->image_height, tib->image_width, CV_8UC1);
+  memcpy(img.data,&tib->data,tib->image_height * tib->image_width);
+  imshow("LIVE",img);
+  waitKey(1);
 
   char filename[128];
   std::string format = prefix+std::string("%05d.%05d.jpg");
   sprintf(filename, format.c_str() , tib->loop, tib->block_id);
   printf(" saving %s\n",filename);
   imwrite(filename, img);
-  /*
-  struct thread_block_info *tib;
-  tib = (struct thread_block_info *)data;
-  printf("block %i packet %i thread %i\n",tib->block_id,tib->offset,tib->thread_id);//,tid);
-  int offset = (tib->offset-1) * tib->payload_size;
-  memcpy( tib->adr->message ,&tib->message,tib->bytes);
   */
+
+  return NULL;
+}
+
+
+void* neu( void* data ){
+
+  struct start_stop *tib;
+  tib = (struct start_stop *)data;
+
+  printf("OK %d %d\n",startImageAt,stopImageAt);
+  int newHeight = 0;
+
+
+  image_info *data_adr = 0;
+  int pos = startImageAt;
+  int width = 0;
+  while (pos!=stopImageAt){
+    data_adr = &image_threads[pos];
+    newHeight += data_adr->image_height;
+    width = data_adr->image_width;
+    pos++;
+    //printf("pos %d\n",pos);
+    if (pos==IMAGE_THREADS){
+      pos=0;
+    }
+  }
+
+  Mat img(newHeight, width, CV_8UC1);
+  int len = newHeight * width;
+  unsigned char imgdata[len];
+  pos = startImageAt;
+  int index = 0;
+  unsigned char *partImage=0;
+  while (pos!=stopImageAt){
+    data_adr = &image_threads[pos];
+    partImage = data_adr->data;
+    printf("*pos %d %d %d\n",pos,partImage[3],data_adr->image_height * data_adr->image_width);
+    memcpy(imgdata,partImage,data_adr->image_height * data_adr->image_width);
+
+    pos++;
+    if (pos==IMAGE_THREADS){
+      pos=0;
+    }
+    index += data_adr->image_height * data_adr->image_width;
+  }
+  printf("OK\n");
+
   pthread_exit((void*)42);
   return NULL;
+
+
+
+    //printf("image %d - %d\n",startImageAt,stopImageAt);
+
+
+    //usleep(10);
+    /*
+    Mat img(newHeight, tib->image_width, CV_8UC1);
+    unsigned char data[newHeight * tib->image_width];
+    pos = startImageAt;
+    int index = 0;
+    image_info *data_adr = 0;
+    unsigned char *partImage=0;
+    while (pos!=stopImageAt){
+
+      data_adr = &image_threads[pos];
+      partImage = data_adr->data;
+
+      printf("*pos %d %d %d\n",pos,partImage[3],data_adr->image_height * data_adr->image_width);
+
+      memcpy(data,partImage,data_adr->image_height * data_adr->image_width);
+
+      pos++;
+      if (pos==IMAGE_THREADS){
+        pos=0;
+      }
+      //vconcat(part, img);
+      //newHeight += tib->image_height;
+      //memcpy(img.data + index,&data_adr->data ,data_adr->image_height * data_adr->image_width);
+      index += data_adr->image_height * data_adr->image_width;
+    }
+    printf("OK\n");
+  */
 }

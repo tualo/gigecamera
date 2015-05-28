@@ -265,7 +265,8 @@ void* writeBlock( void *data )
 
 void* writeData( void *data )
 {
-
+  struct thread_info *tib;
+  tib = (struct thread_info *)data;
   /*
   struct thread_block_info *tib;
   tib = (struct thread_block_info *)data;
