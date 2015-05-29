@@ -5,6 +5,7 @@ var fs = require('fs'),
     program = require('commander'),
     pjson = require('../package.json'),
     OCR = require('../lib/ocr'),
+    variables = require('../lib/variables').variables,
     path =  require('path');
 
 function exdendedHelp(){
@@ -23,9 +24,13 @@ if (program.filename){
   OCR.ocr(program.filename,function(err,res){
     if (err) throw err;
     console.log(JSON.stringify(res,null,4));
-    process.exit();
+    if (variables.OCR_DEBUG==="0"){
+      process.exit();
+    }
   });
-  setInterval(function(){
-    process.exit();
-  },15000);
+  if (variables.OCR_DEBUG!=="0"){
+    setInterval(function(){
+      process.exit();
+    },parseInt(variables.OCR_DEBUG_TIMEOUT));
+  }
 }
