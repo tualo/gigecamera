@@ -1,0 +1,27 @@
+#!/usr/bin/env node
+
+var fs = require('fs'),
+    os = require('os'),
+    program = require('commander'),
+    pjson = require('../package.json'),
+    OCR = require('../lib/ocr'),
+    path =  require('path');
+
+function exdendedHelp(){
+  console.log('');
+}
+
+program
+    .version(pjson.version)
+    .description('ocr')
+    .usage('[options]')
+    .option('-f, --filename [filename]','the image')
+    .on('--help',exdendedHelp)
+    .parse(process.argv);
+
+if (program.filename){
+  OCR.ocr(program.filename);
+  setInterval(function(){
+    process.exit();
+  },15000);
+}

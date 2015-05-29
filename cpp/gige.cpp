@@ -322,8 +322,6 @@ void* writeImage( void *data )
         char filename[128];
         std::string format = prefix+std::string("%08d.tiff");
         sprintf(filename, format.c_str() , bigimage_counter++);
-        printf(filename);
-        printf(" written");
         imwrite(filename, dst);
 
 
