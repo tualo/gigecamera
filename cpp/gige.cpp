@@ -111,8 +111,8 @@ std::string prefix = "~/imagedata/";
 
 int main(int argc, char** argv )
 {
-  namedWindow("LIVE",CV_WINDOW_NORMAL);
-  waitKey(1);
+  //namedWindow("LIVE",CV_WINDOW_NORMAL);
+  //waitKey(1);
 
   int loop = 0;
 
@@ -313,16 +313,16 @@ void* writeImage( void *data )
         memcpy(img.data,bigimage,bigimage_height * IMAGE_WIDTH);
 
 
-        Mat dst;               // dst must be a different Mat
-        flip(img, dst, 1);
+        //Mat dst;               // dst must be a different Mat
+        //flip(img, dst, 1);
 
-        imshow("LIVE",dst);
-        waitKey(1);
+        //imshow("LIVE",dst);
+        //waitKey(1);
 
         char filename[128];
         std::string format = prefix+std::string("%08d.tiff");
         sprintf(filename, format.c_str() , bigimage_counter++);
-        imwrite(filename, dst);
+        imwrite(filename, img);
 
 
         //memcpy(img.data,data,newHeight);
