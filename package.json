@@ -34,6 +34,8 @@
   },
   "readmeFilename": "README.md",
   "dependencies": {
+    "opencv": "git+https://github.com/tualo/node-opencv.git",
+    "nan": "*",
     "commander": "2.8.0",
     "colors": "*",
     "genapi": "*",

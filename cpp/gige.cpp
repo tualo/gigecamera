@@ -160,6 +160,8 @@ int main(int argc, char** argv )
   for (;;) {
      len = sizeof(cliaddr);
      n = recvfrom(sockfd,mesg,MAX_PACKET_LENGTH,0,(struct sockaddr *)&cliaddr,&len);
+
+     /// >>> put me in an thread!
      status = ((unsigned char)mesg[0] << 8) | ((unsigned char)mesg[1]);
      block_id = ((unsigned char)mesg[2] << 8) | ((unsigned char)mesg[3]);
      packet_format = (unsigned char)mesg[4];
@@ -254,6 +256,7 @@ int main(int argc, char** argv )
      if (block_id==65535){
        loop++;
      }
+     /// <<<< put me in an thread!
 
   } // for ;;;
 
