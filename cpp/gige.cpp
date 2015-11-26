@@ -70,6 +70,14 @@ struct packet_info {
   image_info *image_info_adr;
 };
 
+
+
+struct thread_packet_info {
+  int block_id;
+  int packet_id;
+  unsigned char *data;//[MAX_PACKET_LENGTH];
+};
+
 struct packet_info packet_threads[PACKET_THREADS];
 int packet_threads_index = 0;
 
@@ -103,6 +111,7 @@ inline std::string format(const char* fmt, ...){
 
 
 void* writePacket( void *data );
+void* processPacket( void *data );
 void* writeImage( void *data );
 void* neu( void* data );
 
@@ -164,6 +173,25 @@ int main(int argc, char** argv )
      /// >>> put me in an thread!
      status = ((unsigned char)mesg[0] << 8) | ((unsigned char)mesg[1]);
      block_id = ((unsigned char)mesg[2] << 8) | ((unsigned char)mesg[3]);
+
+
+
+
+     struct thread_packet_info *thread_packet_info;
+     thread_packet_info->block_id = block_id;
+     thread_packet_info->data = (unsigned char)mesg;
+
+     pthread_t thread;
+     int ct = pthread_create( &thread, NULL, processPacket, (void*)thread_packet_info);
+     if( ct  != 0) {
+       printf("something went wrong while threading %i\n",ct);
+       return 0;
+     }
+     pthread_join(thread,NULL);
+
+
+
+     /*
      packet_format = (unsigned char)mesg[4];
      packet_id = ((unsigned char)mesg[5] << 16) | ((unsigned char)mesg[6] << 8) | ((unsigned char)mesg[7]);
 
@@ -252,7 +280,7 @@ int main(int argc, char** argv )
          exit(-1);
        }
      }
-
+     */
      if (block_id==65535){
        loop++;
      }
@@ -261,6 +289,114 @@ int main(int argc, char** argv )
   } // for ;;;
 
   return 0;
+}
+
+void* processPacket( void *data ){
+  int status = 0; // 0 is ok
+  int block_id = 0; //1- 65535;
+  int packet_format = 0;
+  int packet_id = 0;
+  int last_packet_id = 0;
+  int image_height = 0;
+  int image_width = 0;
+  int payload_type = 0;
+  int timestamp_1=0;
+  int timestamp_2=0;
+  int pixel_format=0;
+  int offset=0;
+  int packet_length=0;
+
+  status = ((unsigned char)mesg[0] << 8) | ((unsigned char)mesg[1]);
+  block_id = ((unsigned char)mesg[2] << 8) | ((unsigned char)mesg[3]);
+
+  packet_format = (unsigned char)mesg[4];
+  packet_id = ((unsigned char)mesg[5] << 16) | ((unsigned char)mesg[6] << 8) | ((unsigned char)mesg[7]);
+
+  if (packet_id==1){
+    packet_length = n - 8;
+  }
+  if (packet_format == 3){
+    // data payload
+    //printf("idx %d block %05d payload length %05d maxlength %05d packet_id %05d\n ",packet_threads_index,block_id,n-8,packet_length,packet_id);
+
+    if ( (packet_id!=1)&&(packet_id!=last_packet_id+1)){
+      printf("missing packet %d until %d\n",last_packet_id,packet_id-1);
+    }
+    last_packet_id = packet_id;
+
+
+    struct packet_info *packet_info = &packet_threads[packet_threads_index];
+    packet_threads_index++;
+    if (packet_threads_index+1>PACKET_THREADS){
+      packet_threads_index=0;
+    }
+    packet_info->packet_id = packet_id;
+    packet_info->max_packet_length = packet_length;
+    packet_info->packet_length = n - 8;
+    packet_info->block_id = block_id;
+    packet_info->image_height = image_height;
+    packet_info->image_width = image_width;
+    packet_info->loop = loop;
+    packet_info->image_info_adr = &image_threads[image_threads_index];
+    memcpy(packet_info->data,&mesg[8], n - 8);
+
+    pthread_t thread;
+    int ct = pthread_create( &thread, NULL, writePacket, (void*)packet_info);
+    if( ct  != 0) {
+      printf("something went wrong while threading %i\n",ct);
+      return 0;
+    }
+    pthread_join(thread,NULL);
+    //printf("packet %d image %d",packet_threads_index, image_threads_index);
+
+  }
+
+  if (packet_format == 2){
+    // data trailer
+
+
+    struct image_info *image_info = &image_threads[image_threads_index];
+    //printf("idx %d trailer block %05d \n ",image_threads_index,block_id);
+
+
+    pthread_t saveThread;
+    image_info->image_threads_index = image_threads_index;
+    image_info->packet_id = packet_id;
+    image_info->max_packet_length = packet_length;
+    image_info->packet_length = n - 8;
+    image_info->block_id = block_id;
+    image_info->image_height = image_height;
+    image_info->image_width = image_width;
+    image_info->loop = loop;
+
+    image_threads_index++;
+    if (image_threads_index+1>IMAGE_THREADS){
+      image_threads_index=0;
+    }
+
+    int rc = pthread_create( &saveThread, NULL, writeImage, (void*)image_info);
+    if( rc  != 0) {
+      printf("something went wrong while threading %i\n",rc);
+      return 0;
+    }
+    pthread_detach(saveThread);
+
+  }
+  if (packet_format == 1){
+    offset = 8;
+
+    payload_type = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
+    timestamp_1 = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
+    timestamp_2 = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
+    pixel_format = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
+    image_width = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
+    image_height = ((unsigned char)mesg[offset] << 24) | ((unsigned char)mesg[offset+1] << 16) | ((unsigned char)mesg[offset+2] << 8) | ((unsigned char)mesg[offset+3]); offset+=4;
+    //printf("leader block_id %05d width %05d height %05d\n ",block_id,image_width,image_height);
+    if (MAX_IMAGE_LENGTH<image_height*image_width){
+      printf("image too large\n");
+      exit(-1);
+    }
+  }
 }
 
 void* writePacket( void *data )
@@ -300,6 +436,19 @@ void* writeImage( void *data )
     printf("setting avg to %d\n",avg);
   }else{
     //printf("current avg is %d\n",avg);
+
+
+    if (inImage){
+
+
+      if (bigimage_offset + (tib->image_height * tib->image_width) < BIG_IMAGE_HEIGHT * IMAGE_WIDTH ){
+        memcpy(bigimage + bigimage_offset,&tib->data,tib->image_height * tib->image_width);
+          bigimage_offset += tib->image_height * tib->image_width;
+        bigimage_height += tib->image_height;
+      }
+
+    }
+
     if (avg <= main_avg+10){
       if (inImage){
         inImage = false;
@@ -371,16 +520,7 @@ void* writeImage( void *data )
 
     }
 
-    if (inImage){
 
-
-      if (bigimage_offset + (tib->image_height * tib->image_width) < BIG_IMAGE_HEIGHT * IMAGE_WIDTH ){
-        memcpy(bigimage + bigimage_offset,&tib->data,tib->image_height * tib->image_width);
-          bigimage_offset += tib->image_height * tib->image_width;
-        bigimage_height += tib->image_height;
-      }
-
-    }
   }
 
 
