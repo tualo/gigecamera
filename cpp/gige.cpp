@@ -176,7 +176,7 @@ int main(int argc, char** argv )
 
 
 
-
+     /*
      struct thread_packet_info *thread_packet_info;
      thread_packet_info->block_id = block_id;
      thread_packet_info->data = (unsigned char)mesg;
@@ -188,10 +188,10 @@ int main(int argc, char** argv )
        return 0;
      }
      pthread_join(thread,NULL);
+     */
 
 
 
-     /*
      packet_format = (unsigned char)mesg[4];
      packet_id = ((unsigned char)mesg[5] << 16) | ((unsigned char)mesg[6] << 8) | ((unsigned char)mesg[7]);
 
@@ -280,7 +280,7 @@ int main(int argc, char** argv )
          exit(-1);
        }
      }
-     */
+
      if (block_id==65535){
        loop++;
      }
@@ -292,6 +292,7 @@ int main(int argc, char** argv )
 }
 
 void* processPacket( void *data ){
+  /*
   int status = 0; // 0 is ok
   int block_id = 0; //1- 65535;
   int packet_format = 0;
@@ -397,6 +398,7 @@ void* processPacket( void *data ){
       exit(-1);
     }
   }
+  */
 }
 
 void* writePacket( void *data )
