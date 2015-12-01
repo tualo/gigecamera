@@ -21,7 +21,7 @@
 #define IMAGE_WIDTH 2048
 #define STARTSTOP_THREADS 3
 #define IMAGE_HEIGHT 512
-#define MAX_PACKET_LENGTH 3000
+#define MAX_PACKET_LENGTH 10000
 #define MAX_IMAGE_LENGTH IMAGE_WIDTH*IMAGE_HEIGHT
 #define BIG_IMAGE_HEIGHT 2048*5
 
@@ -124,7 +124,7 @@ int main(int argc, char** argv )
   //waitKey(1);
 
   int loop = 0;
-  int mtu = MAX_PACKET_LENGTH;
+  int mtu = 3000;
   if ( argc < 3 && argc > 4 ){
     printf("usage: gige <ip4-address> <mtu> [prefix]\n");
     return -1;
