@@ -124,13 +124,15 @@ int main(int argc, char** argv )
   //waitKey(1);
 
   int loop = 0;
-
-  if ( argc < 2 && argc > 3 ){
-    printf("usage: gige <ip4-address> [prefix]\n");
+  int mtu = MAX_PACKET_LENGTH;
+  if ( argc < 3 && argc > 4 ){
+    printf("usage: gige <ip4-address> <mtu> [prefix]\n");
     return -1;
   }
+  mtu = atoi(argv[2]);
+
   if ( argc >= 3 ){
-    prefix = std::string(argv[2]);
+    prefix = std::string(argv[3]);
   }
 
 
@@ -139,7 +141,7 @@ int main(int argc, char** argv )
   int sockfd,n;
   struct sockaddr_in servaddr,cliaddr;
   socklen_t len;
-  char mesg[MAX_PACKET_LENGTH];
+  char mesg[mtu];
 
   sockfd=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -168,7 +170,7 @@ int main(int argc, char** argv )
 
   for (;;) {
      len = sizeof(cliaddr);
-     n = recvfrom(sockfd,mesg,MAX_PACKET_LENGTH,0,(struct sockaddr *)&cliaddr,&len);
+     n = recvfrom(sockfd,mesg,mtu,0,(struct sockaddr *)&cliaddr,&len);
 
      /// >>> put me in an thread!
      status = ((unsigned char)mesg[0] << 8) | ((unsigned char)mesg[1]);
