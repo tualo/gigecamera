@@ -7,7 +7,7 @@
     "gigecamera": "./bin/gigedevice"
   },
   "license": "GPL-3.0",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "node": ">=0.12.0"
   },
